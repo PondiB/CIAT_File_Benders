@@ -26,7 +26,7 @@ class CHIRPSProcessor:
         self.clip_poly = self.tool_settings['aoi_poly']
         self.place_name = self.tool_settings['aoi_place_name']
         self.extract_file = self.tool_settings['unzip_file']
-        self.cal_mean = self.tool_settings['cal_mean']
+        self.cal_sum = self.tool_settings['cal_sum']
         self.no_data_val = self.tool_settings['no_data_value']
 
     def _get_user_parameters(self):
@@ -52,8 +52,8 @@ class CHIRPSProcessor:
         if not int(self.no_data_val):
             self.no_data_val = ''  # Assign NoData value to none
 
-        if self.cal_mean:
-            self._calculate_mean_raster()  # Calculate mean  raster
+        if self.cal_sum:
+            self._calculate_sum_raster()  # Add all rasters
             self._clip_raster(self.no_data_val)  # Clip raster
         else:
             self._clip_raster(self.no_data_val)  # Clip raster
@@ -87,18 +87,18 @@ class CHIRPSProcessor:
         except IOError as (e):
             print(str(e) + ' or is invalid/corrupted. Remove the bad file and run the process again')
 
-    def _calculate_mean_raster(self):
-        """ Calculate mean raster """
-        stat_type = "MEAN"
+    def _calculate_sum_raster(self):
+        """ Add all rasters """
+        stat_type = "SUM"
         ignore_nodata = True
         ras_year = self._get_raster_year()
         for year in ras_year:
-            ras_files = self._get_mean_rasters(year)
+            ras_files = self._get_sum_rasters(year)
             if ras_files:
                 out_ras_name = ntpath.basename(ras_files[0])[:-7] + ".tif"
                 out_ras_dir = ntpath.dirname(ras_files[0])
-                out_mean_ras = os.path.join(out_ras_dir, out_ras_name).replace('\\', '/')
-                self._cell_statistics(ras_files, out_mean_ras, stat_type, ignore_nodata)
+                out_sum_ras = os.path.join(out_ras_dir, out_ras_name).replace('\\', '/')
+                self._cell_statistics(ras_files, out_sum_ras, stat_type, ignore_nodata)
                 self._delete_raster_file(ras_files)
 
     def _get_raster_year(self):
@@ -111,8 +111,8 @@ class CHIRPSProcessor:
                 ras_year.append(file_year)
         return ras_year
 
-    def _get_mean_rasters(self, year):
-        """ Get rasters for mean calculation """
+    def _get_sum_rasters(self, year):
+        """ Get rasters for summation """
         ras_file_list = []
         root_dir = get_directory(self.src, self.dir_startswith)
         for source_dir, file_path, file_name in get_file_location(root_dir, self.file_startswith, self.file_endswith):
@@ -121,14 +121,14 @@ class CHIRPSProcessor:
                     ras_file_list.append(file_path)
         return ras_file_list
 
-    def _cell_statistics(self, ras_files, out_mean_ras, stat_type, ignore_nodata):
+    def _cell_statistics(self, ras_files, out_sum_ras, stat_type, ignore_nodata):
         """ Perform cell statistics """
-        print('Processing cell statistics for..... {0}'.format(out_mean_ras))
+        print('Processing cell statistics for..... {0}'.format(out_sum_ras))
         if ignore_nodata:
             ignore_nodata = 'DATA'
         else:
             ignore_nodata = ''
-        arcpy.gp.CellStatistics_sa(ras_files, out_mean_ras, stat_type, ignore_nodata)
+        arcpy.gp.CellStatistics_sa(ras_files, out_sum_ras, stat_type, ignore_nodata)
 
     def _clip_raster(self, no_data_val):
         """ Clip raster to area of interest """
